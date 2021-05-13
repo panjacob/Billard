@@ -33,14 +33,12 @@ void rect1_keyboard(const Uint8 *kstate, std::array<int, 2> *position) {
     printf("oldPos: x: %d   y: %d\n", newPosition[0], newPosition[1]);
     if (kstate[SDL_SCANCODE_LEFT]) {
         newPosition[0] -= 1;
-    }
-    if (kstate[SDL_SCANCODE_RIGHT]) {
+    } else if (kstate[SDL_SCANCODE_RIGHT]) {
         newPosition[0] += 1;
     }
     if (kstate[SDL_SCANCODE_UP]) {
         newPosition[1] -= 1;
-    }
-    if (kstate[SDL_SCANCODE_DOWN]) {
+    } else if (kstate[SDL_SCANCODE_DOWN]) {
         newPosition[1] += 1;
     }
     printf("newPos: x: %d   y: %d\n", newPosition[0], newPosition[1]);
@@ -53,7 +51,7 @@ int main(int, char **) {
     int width = 640;
     int height = 480;
     int xMouse, yMouse;
-//    SDL_Event e;
+    bool isMouseDown = false;
 
 
     errcheck(SDL_Init(SDL_INIT_VIDEO) != 0);
@@ -80,8 +78,8 @@ int main(int, char **) {
         SDL_SetRenderDrawColor(renderer.get(), 255, 128, 128, 255);
         SDL_RenderClear(renderer.get());
         auto kstate = SDL_GetKeyboardState(NULL);
+        SDL_GetMouseState(&xMouse, &yMouse);
 
-//    Wyjście
         while (SDL_PollEvent(&event)) { // check if there are some events
             switch (event.type) {
                 case SDL_QUIT:
@@ -90,30 +88,30 @@ int main(int, char **) {
                 case SDL_KEYDOWN:
                     if (event.key.keysym.sym == SDLK_ESCAPE) game_active = false;
                     break;
+                case SDL_MOUSEBUTTONDOWN:
+                    isMouseDown = true;
+                    break;
+                case SDL_MOUSEBUTTONUP:
+                    isMouseDown = false;
+                    break;
             }
         }
 
-        if (event.type == SDL_MOUSEBUTTONDOWN) {
-            printf("123");
-            SDL_SetRenderDrawColor(renderer.get(), 255, 0, 255, 255);
-            SDL_Rect rect = {xMouse - 50, yMouse - 50, 100, 100};
-            SDL_RenderDrawRect(renderer.get(), &rect);
-        }
+        if (isMouseDown)SDL_SetRenderDrawColor(renderer.get(), 255, 0, 255, 255);
+        else SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
+
+
+        SDL_Rect rect = {xMouse - 50, yMouse - 50, 100, 100};
+        SDL_RenderDrawRect(renderer.get(), &rect);
+
         rect1_keyboard(kstate, &position);
         SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
         SDL_Rect rect1 = {position[0], position[1], 100, 100};
         SDL_RenderDrawRect(renderer.get(), &rect1);
-
-
-        SDL_GetMouseState(&xMouse, &yMouse);
-        SDL_SetRenderDrawColor(renderer.get(), 0, 0, 255, 255);
-        SDL_Rect rect2 = {xMouse - 50, yMouse - 50, 100, 100};
-        SDL_RenderDrawRect(renderer.get(), &rect2);
-
-
-
-//    SDL_RenderDrawPoint(renderer.get(), position[0], position[1]);
-
+//        SDL_Rect destination;
+//        destination.x = (100 /2) - (destination.w /2) ;
+//        destination.y = (100 /2) - (destination.h /2) ;
+//        SDL_RenderCopyEx(renderer.get(), rect1, NULL, &destination, 50.f , NULL, SDL_FLIP_NONE);
 
 
         SDL_RenderPresent(renderer.get()); // draw frame to screen
