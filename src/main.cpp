@@ -1,9 +1,3 @@
-/**
- * This is the simple hello world for SDL2.
- * 
- * You need C++14 to compile this.
- */
-
 #include <SDL2/SDL.h>
 #include <chrono>
 #include <cstdint>
@@ -16,6 +10,9 @@
 #include <tuple>
 #include <vector>
 #include <array>
+#include <map>
+#include <functional>
+#include "vectors.hpp"
 
 // check for errors
 #define errcheck(e)                   \
@@ -28,22 +25,106 @@
     }                                 \
   }
 
-void rect1_keyboard(const Uint8 *kstate, std::array<int, 2> *position) {
-    std::array<int, 2> newPosition = *position;
-    printf("oldPos: x: %d   y: %d\n", newPosition[0], newPosition[1]);
-    if (kstate[SDL_SCANCODE_LEFT]) {
-        newPosition[0] -= 1;
-    } else if (kstate[SDL_SCANCODE_RIGHT]) {
-        newPosition[0] += 1;
+//void rect1_keyboard(const Uint8 *kstate, std::array<int, 2> *position) {
+//    std::array<int, 2> newPosition = *position;
+////    printf("oldPos: x: %d   y: %d\n", newPosition[0], newPosition[1]);
+//    if (kstate[SDL_SCANCODE_LEFT]) {
+//        newPosition[0] -= 1;
+//    } else if (kstate[SDL_SCANCODE_RIGHT]) {
+//        newPosition[0] += 1;
+//    }
+//    if (kstate[SDL_SCANCODE_UP]) {
+//        newPosition[1] -= 1;
+//    } else if (kstate[SDL_SCANCODE_DOWN]) {
+//        newPosition[1] += 1;
+//    }
+////    printf("newPos: x: %d   y: %d\n", newPosition[0], newPosition[1]);
+//    *position = newPosition;
+//}
+
+class physical_c {
+public:
+    std::array<double, 2> position;
+    std::array<double, 2> velocity;
+    std::array<double, 2> acceleration;
+
+    void update(double dt_f,
+                std::function<void(physical_c *, std::array<double, 2> &pos, std::array<double, 2> &vel)> callback_f) {
+        using namespace tp::operators;
+//        std::cout << "acc: " << acceleration[0] << "," << acceleration[1] << " ||| " << velocity[0] << ","
+//                  << velocity[1] << std::endl;
+        auto new_position = position + velocity * dt_f + velocity * acceleration * dt_f * dt_f * 0.5;
+        auto new_velocity = (velocity + acceleration * dt_f) * 0.94;
+        callback_f(this, new_position, new_velocity);
     }
-    if (kstate[SDL_SCANCODE_UP]) {
-        newPosition[1] -= 1;
-    } else if (kstate[SDL_SCANCODE_DOWN]) {
-        newPosition[1] += 1;
+};
+
+class Cue {
+public:
+    const int height = 50;
+    const int width = 100;
+    double angle = 0;
+    std::map<std::string, int> intentions;
+    std::array<double, 2> position{};
+
+    Cue() {
+        position = {150, 150};
     }
-    printf("newPos: x: %d   y: %d\n", newPosition[0], newPosition[1]);
-    *position = newPosition;
-}
+
+    void apply_intent() {
+        if (intentions.count("angleR")) angle += 0.01;
+        if (intentions.count("angleL")) angle -= 0.01;
+
+        if (angle > 1) angle = 0;
+        else if (angle < 0) angle = 1;
+
+        intentions.clear();
+    }
+
+    void update_position(double x, double y) {
+        position = {x, y};
+    }
+
+    void update_tracker(double x, double y, const std::shared_ptr<SDL_Renderer> &renderer) {
+        double vx = (x - position[0]);
+        double vy = (y - position[1]);
+        double len = sqrt(pow(vx, 2) + pow(vy, 2));
+        vx /= len;
+        vy /= len;
+        double new_angle = vx * vy;
+        angle = acos(
+                (position[0] * x + position[1] * y) /
+                (sqrt(pow(position[0], 2) + pow(position[1], 2)) * sqrt(pow(x, 2) + pow(y, 2))));
+        printf("%f %f | %f\n", vx, vy, angle);
+        SDL_RenderDrawLine(renderer.get(), x, y, position[0], position[1]);
+    }
+
+    void render(const std::shared_ptr<SDL_Renderer> &renderer) {
+//        apply_intent();
+        int x = int(position[0]);
+        int y = int(position[1]);
+        int h = int(height / 2);
+        int w = int(width / 2);
+        double anglePI = angle * M_PI;
+//        printf("%f %f\n", angle, anglePI);
+
+        int ULx = x + w * cos(anglePI) - h * sin(anglePI);
+        int URx = x - w * cos(anglePI) - h * sin(anglePI);
+        int BLx = x + w * cos(anglePI) + h * sin(anglePI);
+        int BRx = x - w * cos(anglePI) + h * sin(anglePI);
+
+        int ULy = y + h * cos(anglePI) + w * sin(anglePI);
+        int URy = y + h * cos(anglePI) - w * sin(anglePI);
+        int BLy = y - h * cos(anglePI) + w * sin(anglePI);
+        int BRy = y - h * cos(anglePI) - w * sin(anglePI);
+
+        SDL_RenderDrawLine(renderer.get(), ULx, ULy, URx, URy);
+        SDL_RenderDrawLine(renderer.get(), BLx, BLy, BRx, BRy);
+        SDL_RenderDrawLine(renderer.get(), ULx, ULy, BLx, BLy);
+        SDL_RenderDrawLine(renderer.get(), URx, URy, BRx, BRy);
+    }
+};
+
 
 int main(int, char **) {
     using namespace std;
@@ -52,32 +133,29 @@ int main(int, char **) {
     int height = 480;
     int xMouse, yMouse;
     bool isMouseDown = false;
-
+    array<int, 2> position = {10, 10};
+    milliseconds dt(15);
+    steady_clock::time_point current_time = steady_clock::now(); // remember current time
+    Cue cue;
 
     errcheck(SDL_Init(SDL_INIT_VIDEO) != 0);
-
     shared_ptr<SDL_Window> window(
             SDL_CreateWindow("Billard", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height,
                              SDL_WINDOW_SHOWN), [=](auto w) { SDL_DestroyWindow(w); });
-
     errcheck(window == nullptr);
-
     shared_ptr<SDL_Renderer> renderer(SDL_CreateRenderer(
             window.get(), -1, SDL_RENDERER_ACCELERATED), // SDL_RENDERER_PRESENTVSYNC
                                       [=](auto r) { SDL_DestroyRenderer(r); });
     errcheck(renderer == nullptr);
 
-    array<int, 2> position = {10, 10};
 
-    //auto dt = 15ms;
-    milliseconds dt(15);
-
-    steady_clock::time_point current_time = steady_clock::now(); // remember current time
     for (bool game_active = true; game_active;) {
         SDL_Event event;
         SDL_SetRenderDrawColor(renderer.get(), 255, 128, 128, 255);
         SDL_RenderClear(renderer.get());
-        auto kstate = SDL_GetKeyboardState(NULL);
+        auto keyboardState = SDL_GetKeyboardState(nullptr);
+        if (keyboardState[SDL_SCANCODE_LEFT]) cue.intentions["angleL"] = 1;
+        if (keyboardState[SDL_SCANCODE_RIGHT]) cue.intentions["angleR"] = 1;
         SDL_GetMouseState(&xMouse, &yMouse);
 
         while (SDL_PollEvent(&event)) { // check if there are some events
@@ -104,36 +182,20 @@ int main(int, char **) {
         SDL_Rect rect = {xMouse - 50, yMouse - 50, 100, 100};
         SDL_RenderDrawRect(renderer.get(), &rect);
 
-        rect1_keyboard(kstate, &position);
+//        rect1_keyboard(keyboardState, &position);
         SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
         SDL_Rect rect1 = {position[0], position[1], 100, 100};
         SDL_RenderDrawRect(renderer.get(), &rect1);
-//        SDL_Rect destination;
-//        destination.x = (100 /2) - (destination.w /2) ;
-//        destination.y = (100 /2) - (destination.h /2) ;
-//        SDL_RenderCopyEx(renderer.get(), rect1, NULL, &destination, 50.f , NULL, SDL_FLIP_NONE);
 
-
+//        cue.update_position(xMouse,yMouse);
+        cue.update_tracker(xMouse, yMouse, renderer);
+        cue.render(renderer);
         SDL_RenderPresent(renderer.get()); // draw frame to screen
         this_thread::sleep_until(current_time = current_time + dt);
     }
     SDL_Quit();
     return 0;
 }
-
-/*
-
-		auto currentTime = std::chrono::high_resolution_clock::now();
-//		std::this_thread::sleep_for( dt );
-//		std::this_thread::sleep_until( prevTime + dt );
-//		prevTime = prevTime + dt;// lub std::chrono::high_resolution_clock::now();
-		dt = currentTime - prevTime;
-		prevTime = currentTime;
-		static int f = 0;
-		if (((f++)%100) == 0)
-		std::cout << "dt = " << dt.count() << "  FPS=" << (1/dt.count()) << std::endl;
-
-*/
 
 
 
