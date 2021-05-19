@@ -13,6 +13,8 @@
 #include <map>
 #include <functional>
 #include "vectors.hpp"
+#include "Cue.hpp"
+#include "Ball.hpp"
 
 // check for errors
 #define errcheck(e)                   \
@@ -59,71 +61,65 @@ public:
     }
 };
 
-class Cue {
-public:
-    const int height = 50;
-    const int width = 100;
-    double angle = 0;
-    std::map<std::string, int> intentions;
-    std::array<double, 2> position{};
-
-    Cue() {
-        position = {150, 150};
-    }
-
-    void apply_intent() {
-        if (intentions.count("angleR")) angle += 0.01;
-        if (intentions.count("angleL")) angle -= 0.01;
-
-        if (angle > 1) angle = 0;
-        else if (angle < 0) angle = 1;
-
-        intentions.clear();
-    }
-
-    void update_position(double x, double y) {
-        position = {x, y};
-    }
-
-    void update_tracker(double x, double y, const std::shared_ptr<SDL_Renderer> &renderer) {
-        double vx = (x - position[0]);
-        double vy = (y - position[1]);
-        double len = sqrt(pow(vx, 2) + pow(vy, 2));
-        vx /= len;
-        vy /= len;
-        double new_angle = vx * vy;
-        angle = acos(
-                (position[0] * x + position[1] * y) /
-                (sqrt(pow(position[0], 2) + pow(position[1], 2)) * sqrt(pow(x, 2) + pow(y, 2))));
-        printf("%f %f | %f\n", vx, vy, angle);
-        SDL_RenderDrawLine(renderer.get(), x, y, position[0], position[1]);
-    }
-
-    void render(const std::shared_ptr<SDL_Renderer> &renderer) {
-//        apply_intent();
-        int x = int(position[0]);
-        int y = int(position[1]);
-        int h = int(height / 2);
-        int w = int(width / 2);
-        double anglePI = angle * M_PI;
-//        printf("%f %f\n", angle, anglePI);
-
-        int ULx = x + w * cos(anglePI) - h * sin(anglePI);
-        int URx = x - w * cos(anglePI) - h * sin(anglePI);
-        int BLx = x + w * cos(anglePI) + h * sin(anglePI);
-        int BRx = x - w * cos(anglePI) + h * sin(anglePI);
-
-        int ULy = y + h * cos(anglePI) + w * sin(anglePI);
-        int URy = y + h * cos(anglePI) - w * sin(anglePI);
-        int BLy = y - h * cos(anglePI) + w * sin(anglePI);
-        int BRy = y - h * cos(anglePI) - w * sin(anglePI);
-
-        SDL_RenderDrawLine(renderer.get(), ULx, ULy, URx, URy);
-        SDL_RenderDrawLine(renderer.get(), BLx, BLy, BRx, BRy);
-        SDL_RenderDrawLine(renderer.get(), ULx, ULy, BLx, BLy);
-        SDL_RenderDrawLine(renderer.get(), URx, URy, BRx, BRy);
-    }
-};
+//class Cue {
+//public:
+//    const int height = 50;
+//    const int width = 100;
+//    double angle = 0;
+//    std::map<std::string, int> intentions;
+//    std::array<double, 2> position{};
+//
+//    Cue() {
+//        position = {150, 150};
+//    }
+//
+//    void apply_intent() {
+//        if (intentions.count("angleR")) angle += 0.01;
+//        if (intentions.count("angleL")) angle -= 0.01;
+//
+//        if (angle > 1) angle = 0;
+//        else if (angle < 0) angle = 1;
+//
+//        intentions.clear();
+//    }
+//
+//    void update_position(double x, double y) {
+//        position = {x, y};
+//    }
+//
+//    void update_tracker(double x, double y, const std::shared_ptr<SDL_Renderer> &renderer) {
+//        double vx = (x - position[0]);
+//        double vy = (y - position[1]);
+//        angle = atan2(vy, vx);
+//        printf("%f %f | %f\n", vx, vy, angle);
+//        SDL_RenderDrawLine(renderer.get(), x, y, position[0], position[1]);
+//    }
+//
+//    void render(const std::shared_ptr<SDL_Renderer> &renderer) {
+////        apply_intent();
+//        int x = int(position[0]);
+//        int y = int(position[1]);
+//        int h = int(height / 2);
+//        int w = int(width / 2);
+//        double anglePI = angle;
+////        printf("%f %f\n", angle, anglePI);
+//
+//        int ULx = x + w * cos(anglePI) - h * sin(anglePI);
+//        int URx = x - w * cos(anglePI) - h * sin(anglePI);
+//        int BLx = x + w * cos(anglePI) + h * sin(anglePI);
+//        int BRx = x - w * cos(anglePI) + h * sin(anglePI);
+//
+//        int ULy = y + h * cos(anglePI) + w * sin(anglePI);
+//        int URy = y + h * cos(anglePI) - w * sin(anglePI);
+//        int BLy = y - h * cos(anglePI) + w * sin(anglePI);
+//        int BRy = y - h * cos(anglePI) - w * sin(anglePI);
+//
+//        SDL_RenderDrawLine(renderer.get(), ULx, ULy, URx, URy);
+//        SDL_RenderDrawLine(renderer.get(), BLx, BLy, BRx, BRy);
+//        SDL_RenderDrawLine(renderer.get(), ULx, ULy, BLx, BLy);
+//        SDL_RenderDrawLine(renderer.get(), URx, URy, BRx, BRy);
+//    }
+//};
 
 
 int main(int, char **) {
@@ -133,10 +129,11 @@ int main(int, char **) {
     int height = 480;
     int xMouse, yMouse;
     bool isMouseDown = false;
-    array<int, 2> position = {10, 10};
+//    array<int, 2> position = {10, 10};
     milliseconds dt(15);
     steady_clock::time_point current_time = steady_clock::now(); // remember current time
     Cue cue;
+    Ball ball;
 
     errcheck(SDL_Init(SDL_INIT_VIDEO) != 0);
     shared_ptr<SDL_Window> window(
@@ -179,16 +176,16 @@ int main(int, char **) {
         else SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
 
 
-        SDL_Rect rect = {xMouse - 50, yMouse - 50, 100, 100};
-        SDL_RenderDrawRect(renderer.get(), &rect);
+//        SDL_Rect rect = {xMouse - 50, yMouse - 50, 100, 100};
+//        SDL_RenderDrawRect(renderer.get(), &rect);
 
 //        rect1_keyboard(keyboardState, &position);
-        SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
-        SDL_Rect rect1 = {position[0], position[1], 100, 100};
-        SDL_RenderDrawRect(renderer.get(), &rect1);
-
-//        cue.update_position(xMouse,yMouse);
-        cue.update_tracker(xMouse, yMouse, renderer);
+//        SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
+//        SDL_Rect rect1 = {position[0], position[1], 100, 100};
+//        SDL_RenderDrawRect(renderer.get(), &rect1);
+        ball.render(renderer);
+        cue.update_position(xMouse,yMouse);
+        cue.update_tracker(ball.position[0], ball.position[1], renderer);
         cue.render(renderer);
         SDL_RenderPresent(renderer.get()); // draw frame to screen
         this_thread::sleep_until(current_time = current_time + dt);
