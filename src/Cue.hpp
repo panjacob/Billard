@@ -1,11 +1,12 @@
-#ifndef ___CUE_TP_PJATK_HPP___
-#define ___CUE_TP_PJATK_HPP___
+#ifndef ___CUE_JK___
+#define ___CUE_JK___
 
 class Cue {
 public:
     const int height = 16;
     const int width = 100;
     double angle = 0;
+    double distanceToWhite = 999;
     std::map<std::string, int> intentions;
     std::array<double, 2> position{};
 
@@ -27,15 +28,18 @@ public:
         position = {x, y};
     }
 
-    void update_tracker(double x, double y, const std::shared_ptr <SDL_Renderer> &renderer) {
+    void update_tracker
+    (double x, double y, const std::shared_ptr<SDL_Renderer> &renderer, const int &ballRadius) {
         double vx = (x - position[0]);
         double vy = (y - position[1]);
         angle = atan2(vy, vx);
-//        printf("%f %f | %f\n", vx, vy, angle);
+        distanceToWhite = sqrt(pow(vx, 2) + pow(vy, 2)) - width / 2 - ballRadius;
+//        printf("%f\n", distanceToWhite);
         SDL_RenderDrawLine(renderer.get(), x, y, position[0], position[1]);
+
     }
 
-    void render(const std::shared_ptr <SDL_Renderer> &renderer) {
+    void render(const std::shared_ptr<SDL_Renderer> &renderer) {
 //        apply_intent();
         int x = int(position[0]);
         int y = int(position[1]);

@@ -61,79 +61,26 @@ public:
     }
 };
 
-//class Cue {
-//public:
-//    const int height = 50;
-//    const int width = 100;
-//    double angle = 0;
-//    std::map<std::string, int> intentions;
-//    std::array<double, 2> position{};
-//
-//    Cue() {
-//        position = {150, 150};
-//    }
-//
-//    void apply_intent() {
-//        if (intentions.count("angleR")) angle += 0.01;
-//        if (intentions.count("angleL")) angle -= 0.01;
-//
-//        if (angle > 1) angle = 0;
-//        else if (angle < 0) angle = 1;
-//
-//        intentions.clear();
-//    }
-//
-//    void update_position(double x, double y) {
-//        position = {x, y};
-//    }
-//
-//    void update_tracker(double x, double y, const std::shared_ptr<SDL_Renderer> &renderer) {
-//        double vx = (x - position[0]);
-//        double vy = (y - position[1]);
-//        angle = atan2(vy, vx);
-//        printf("%f %f | %f\n", vx, vy, angle);
-//        SDL_RenderDrawLine(renderer.get(), x, y, position[0], position[1]);
-//    }
-//
-//    void render(const std::shared_ptr<SDL_Renderer> &renderer) {
-////        apply_intent();
-//        int x = int(position[0]);
-//        int y = int(position[1]);
-//        int h = int(height / 2);
-//        int w = int(width / 2);
-//        double anglePI = angle;
-////        printf("%f %f\n", angle, anglePI);
-//
-//        int ULx = x + w * cos(anglePI) - h * sin(anglePI);
-//        int URx = x - w * cos(anglePI) - h * sin(anglePI);
-//        int BLx = x + w * cos(anglePI) + h * sin(anglePI);
-//        int BRx = x - w * cos(anglePI) + h * sin(anglePI);
-//
-//        int ULy = y + h * cos(anglePI) + w * sin(anglePI);
-//        int URy = y + h * cos(anglePI) - w * sin(anglePI);
-//        int BLy = y - h * cos(anglePI) + w * sin(anglePI);
-//        int BRy = y - h * cos(anglePI) - w * sin(anglePI);
-//
-//        SDL_RenderDrawLine(renderer.get(), ULx, ULy, URx, URy);
-//        SDL_RenderDrawLine(renderer.get(), BLx, BLy, BRx, BRy);
-//        SDL_RenderDrawLine(renderer.get(), ULx, ULy, BLx, BLy);
-//        SDL_RenderDrawLine(renderer.get(), URx, URy, BRx, BRy);
-//    }
-//};
 
 
 int main(int, char **) {
     using namespace std;
     using namespace std::chrono;
-    int width = 640;
-    int height = 480;
+    const int width = 640;
+    const int height = 480;
     int xMouse, yMouse;
     bool isMouseDown = false;
 //    array<int, 2> position = {10, 10};
     milliseconds dt(15);
     steady_clock::time_point current_time = steady_clock::now(); // remember current time
     Cue cue;
-    Ball ball;
+    Ball ballWhite(400, 50);
+
+    std::vector<Ball> balls {ballWhite};
+    for (int i = 0; i < 6; i++){
+        balls.emplace_back(Ball(double(i*50), i*50));
+    }
+
 
     errcheck(SDL_Init(SDL_INIT_VIDEO) != 0);
     shared_ptr<SDL_Window> window(
@@ -154,6 +101,7 @@ int main(int, char **) {
         if (keyboardState[SDL_SCANCODE_LEFT]) cue.intentions["angleL"] = 1;
         if (keyboardState[SDL_SCANCODE_RIGHT]) cue.intentions["angleR"] = 1;
         SDL_GetMouseState(&xMouse, &yMouse);
+        double dt_f = dt.count() / 1000.0;
 
         while (SDL_PollEvent(&event)) { // check if there are some events
             switch (event.type) {
@@ -183,14 +131,37 @@ int main(int, char **) {
 //        SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
 //        SDL_Rect rect1 = {position[0], position[1], 100, 100};
 //        SDL_RenderDrawRect(renderer.get(), &rect1);
-        ball.render(renderer);
-        cue.update_position(xMouse,yMouse);
-        cue.update_tracker(ball.position[0], ball.position[1], renderer);
+
+        cue.update_position(xMouse, yMouse);
+        cue.update_tracker(balls[0].position[0], balls[0].position[1], renderer, balls[0].radius);
+        balls[0].update_cue_collision(renderer, cue);
+
+        for (auto &ball : balls) {
+            ball.update_collisions(width, height);
+
+            for (auto &ball2 : balls) {
+                if (&ball == &ball2) continue;
+                const double distance = sqrt(
+                        pow(ball.position[0] - ball2.position[0], 2) + pow(ball.position[1] - ball2.position[1], 2));
+
+                if (distance <= ball.radius * 2) {
+                    printf("%f\n", distance);
+                    const int angle = atan2(ball.position[0] - ball2.position[0], ball.position[1] - ball2.position[1]);
+                    const double ball2_velocity = sqrt(pow(ball2.velocity[0], 2) + pow(ball2.velocity[1], 2));
+                    ball.velocity = {sin(angle) * ball2_velocity  , cos(angle)  * ball2_velocity};
+                }
+            }
+            ball.update_position(dt_f);
+            ball.render(renderer);
+        }
+
         cue.render(renderer);
         SDL_RenderPresent(renderer.get()); // draw frame to screen
         this_thread::sleep_until(current_time = current_time + dt);
     }
+
     SDL_Quit();
+
     return 0;
 }
 
