@@ -15,6 +15,7 @@
 #include "vectors.hpp"
 #include "Cue.hpp"
 #include "Ball.hpp"
+#include "Table.hpp"
 
 // check for errors
 #define errcheck(e)                   \
@@ -44,42 +45,24 @@
 //    *position = newPosition;
 //}
 
-class physical_c {
-public:
-    std::array<double, 2> position;
-    std::array<double, 2> velocity;
-    std::array<double, 2> acceleration;
-
-    void update(double dt_f,
-                std::function<void(physical_c *, std::array<double, 2> &pos, std::array<double, 2> &vel)> callback_f) {
-        using namespace tp::operators;
-//        std::cout << "acc: " << acceleration[0] << "," << acceleration[1] << " ||| " << velocity[0] << ","
-//                  << velocity[1] << std::endl;
-        auto new_position = position + velocity * dt_f + velocity * acceleration * dt_f * dt_f * 0.5;
-        auto new_velocity = (velocity + acceleration * dt_f) * 0.94;
-        callback_f(this, new_position, new_velocity);
-    }
-};
-
 
 
 int main(int, char **) {
     using namespace std;
     using namespace std::chrono;
-    const int width = 640;
-    const int height = 480;
+    const int width = 2560;
+    const int height = 1080;
+    const int margin = 300;
+
+
     int xMouse, yMouse;
     bool isMouseDown = false;
 //    array<int, 2> position = {10, 10};
     milliseconds dt(15);
     steady_clock::time_point current_time = steady_clock::now(); // remember current time
     Cue cue;
-    Ball ballWhite(400, 50);
 
-    std::vector<Ball> balls {ballWhite};
-    for (int i = 0; i < 6; i++){
-        balls.emplace_back(Ball(double(i*50), i*50));
-    }
+    Table table(width, height, margin);
 
 
     errcheck(SDL_Init(SDL_INIT_VIDEO) != 0);
@@ -95,7 +78,7 @@ int main(int, char **) {
 
     for (bool game_active = true; game_active;) {
         SDL_Event event;
-        SDL_SetRenderDrawColor(renderer.get(), 255, 128, 128, 255);
+        SDL_SetRenderDrawColor(renderer.get(), 44, 130, 87, 255);
         SDL_RenderClear(renderer.get());
         auto keyboardState = SDL_GetKeyboardState(nullptr);
         if (keyboardState[SDL_SCANCODE_LEFT]) cue.intentions["angleL"] = 1;
@@ -123,39 +106,12 @@ int main(int, char **) {
         if (isMouseDown)SDL_SetRenderDrawColor(renderer.get(), 255, 0, 255, 255);
         else SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
 
-
-//        SDL_Rect rect = {xMouse - 50, yMouse - 50, 100, 100};
-//        SDL_RenderDrawRect(renderer.get(), &rect);
-
-//        rect1_keyboard(keyboardState, &position);
-//        SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
-//        SDL_Rect rect1 = {position[0], position[1], 100, 100};
-//        SDL_RenderDrawRect(renderer.get(), &rect1);
-
         cue.update_position(xMouse, yMouse);
-        cue.update_tracker(balls[0].position[0], balls[0].position[1], renderer, balls[0].radius);
-        balls[0].update_cue_collision(renderer, cue);
-
-        for (auto &ball : balls) {
-            ball.update_collisions(width, height);
-
-            for (auto &ball2 : balls) {
-                if (&ball == &ball2) continue;
-                const double distance = sqrt(
-                        pow(ball.position[0] - ball2.position[0], 2) + pow(ball.position[1] - ball2.position[1], 2));
-
-                if (distance <= ball.radius * 2) {
-                    printf("%f\n", distance);
-                    const int angle = atan2(ball.position[0] - ball2.position[0], ball.position[1] - ball2.position[1]);
-                    const double ball2_velocity = sqrt(pow(ball2.velocity[0], 2) + pow(ball2.velocity[1], 2));
-                    ball.velocity = {sin(angle) * ball2_velocity  , cos(angle)  * ball2_velocity};
-                }
-            }
-            ball.update_position(dt_f);
-            ball.render(renderer);
-        }
-
+        cue.update_tracker(table.balls[0].position[0], table.balls[0].position[1], renderer, table.balls[0].radius);
+        table.balls[0].update_cue_collision(renderer, cue);
+        table.updateBallCollisions(dt_f);
         cue.render(renderer);
+        table.render(renderer);
         SDL_RenderPresent(renderer.get()); // draw frame to screen
         this_thread::sleep_until(current_time = current_time + dt);
     }

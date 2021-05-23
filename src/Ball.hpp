@@ -3,16 +3,18 @@
 
 class Ball {
 public:
-    const int radius = 16;
-    const int stopSpeed = 25;
+    double radius = 2.85;
+    const int stopSpeed = 30;
+    bool collided = false;
     std::array<double, 2> frictionConstant{10, 10};
-    const double friction = 0.001;
+    const double friction = 0.002;
     std::array<double, 2> position{};
     std::array<double, 2> velocity{0, 0};
     std::array<double, 2> acceleration{0, 0};
 
-    Ball(double x, double y) {
+    Ball(double x, double y, double scale) {
         position = {x, y};
+        radius = 2.85 * scale;
     }
 
     void update_position(double dt_f) {
@@ -33,15 +35,15 @@ public:
 
     void update_cue_collision(const std::shared_ptr<SDL_Renderer> &renderer, const Cue &cue) {
         if (cue.distanceToWhite <= 0 and velocity[0] == 0 and velocity[1] == 0) {
-            acceleration = std::array<double, 2>{cos(cue.angle) * 50000, sin(cue.angle) * 10000};
+            acceleration = std::array<double, 2>{cos(cue.angle) * cue.power, sin(cue.angle) *cue.power};
         } else acceleration = std::array<double, 2>{0, 0};
     }
 
-    void update_collisions(const int &width, const int &height) {
-        if (position[0] - radius / 2 <= 0) velocity[0] = -velocity[0];
-        else if (position[0] + radius / 2 >= width) velocity[0] = -velocity[0];
-        if (position[1] - radius / 2 <= 0) velocity[1] = -velocity[1];
-        else if (position[1] + radius / 2 >= height) velocity[1] = -velocity[1];
+    void update_collisions(int x0, int y0, int x1, int y1) {
+        if (position[0] - radius / 2 <= x0) velocity[0] = -velocity[0];
+        else if (position[0] + radius / 2 >= x1) velocity[0] = -velocity[0];
+        if (position[1] - radius / 2 <= y0) velocity[1] = -velocity[1];
+        else if (position[1] + radius / 2 >= y1) velocity[1] = -velocity[1];
     }
 
     void render(const std::shared_ptr<SDL_Renderer> &renderer) {

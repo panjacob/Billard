@@ -5,6 +5,7 @@ class Cue {
 public:
     const int height = 16;
     const int width = 100;
+    const int power = 5000;
     double angle = 0;
     double distanceToWhite = 999;
     std::map<std::string, int> intentions;
@@ -29,13 +30,13 @@ public:
     }
 
     void update_tracker
-    (double x, double y, const std::shared_ptr<SDL_Renderer> &renderer, const int &ballRadius) {
+            (double x, double y, const std::shared_ptr<SDL_Renderer> &renderer, const int &ballRadius) {
         double vx = (x - position[0]);
         double vy = (y - position[1]);
         angle = atan2(vy, vx);
         distanceToWhite = sqrt(pow(vx, 2) + pow(vy, 2)) - width / 2 - ballRadius;
-//        printf("%f\n", distanceToWhite);
-        SDL_RenderDrawLine(renderer.get(), x, y, position[0], position[1]);
+//        SDL_RenderDrawLine(renderer.get(), x, y, position[0], position[1]);
+        SDL_RenderDrawLine(renderer.get(), x, y, x + vx, y + vy);
 
     }
 
