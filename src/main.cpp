@@ -60,9 +60,10 @@ int main(int, char **) {
 //    array<int, 2> position = {10, 10};
     milliseconds dt(15);
     steady_clock::time_point current_time = steady_clock::now(); // remember current time
-    Cue cue;
-
     Table table(width, height, margin);
+    Cue cue(table.scale);
+
+
 
 
     errcheck(SDL_Init(SDL_INIT_VIDEO) != 0);
@@ -108,7 +109,7 @@ int main(int, char **) {
 
         cue.update_position(xMouse, yMouse);
         cue.update_tracker(table.balls[0].position[0], table.balls[0].position[1], renderer, table.balls[0].radius);
-        table.balls[0].update_cue_collision(renderer, cue);
+        table.balls[0].update_cue_collision(cue);
         table.updateBallCollisions(dt_f);
         cue.render(renderer);
         table.render(renderer);
