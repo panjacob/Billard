@@ -1,3 +1,4 @@
+//Import biblioteki do wypisywania tekstu
 #include <SDL2/SDL.h>
 #include <chrono>
 #include <cstdint>
@@ -16,7 +17,10 @@
 #include "Cue.hpp"
 #include "Ball.hpp"
 #include "Table.hpp"
-
+//#include "Text.hpp"
+#include "Pocket.hpp"
+#include <SDL2/SDL_ttf.h>
+#include <stdlib.h>
 // check for errors
 #define errcheck(e)                   \
   {                                   \
@@ -45,6 +49,35 @@
 //    *position = newPosition;
 //}
 
+//#include <unistd.h>
+//std::string getcwd_string(  ) {
+//    char buff[128];
+//    getcwd( buff, 128 );
+//    std::string cwd( buff );
+//    return cwd;
+//}
+
+//void draw(const char* msg, int x, int y, int r, int g, int b, int size, const std::shared_ptr<SDL_Renderer> &ren) {
+//
+//    SDL_Surface* surf;
+//    SDL_Texture* tex;
+//    SDL_Color color;
+//    color.r=r;
+//    color.g=g;
+//    color.b=b;
+//    color.a=255;
+//    SDL_Rect rect;
+//    TTF_Font *font = TTF_OpenFont("data/font.ttf", size);
+//    surf = TTF_RenderText_Solid(font, msg, color);
+//    tex = SDL_CreateTextureFromSurface(ren.get(), surf);
+//    rect.x=x;
+//    rect.y=y;
+//    rect.w=surf->w;
+//    rect.h=surf->h;
+//    SDL_FreeSurface(surf);
+//    SDL_RenderCopy(ren.get(), tex, nullptr, &rect);
+//    SDL_DestroyTexture(tex);
+//}
 
 
 int main(int, char **) {
@@ -53,17 +86,17 @@ int main(int, char **) {
     const int width = 2560;
     const int height = 1080;
     const int margin = 300;
+//    std::string pathxd = getcwd_string();
+//    printf("DUUUUUUUUUUUPPPPPPPPPPPPPPPPPPPPPAAAAAAAAAAA\n");
+//    printf("%s\n", pathxd.c_str());
 
 
-    int xMouse, yMouse;
+    int mouseX, mouseY;
     bool isMouseDown = false;
-//    array<int, 2> position = {10, 10};
     milliseconds dt(15);
     steady_clock::time_point current_time = steady_clock::now(); // remember current time
     Table table(width, height, margin);
     Cue cue(table.scale);
-
-
 
 
     errcheck(SDL_Init(SDL_INIT_VIDEO) != 0);
@@ -79,12 +112,12 @@ int main(int, char **) {
 
     for (bool game_active = true; game_active;) {
         SDL_Event event;
-        SDL_SetRenderDrawColor(renderer.get(), 44, 130, 87, 255);
+        SDL_SetRenderDrawColor(renderer.get(), 0, 40, 73, 255);
         SDL_RenderClear(renderer.get());
-        auto keyboardState = SDL_GetKeyboardState(nullptr);
-        if (keyboardState[SDL_SCANCODE_LEFT]) cue.intentions["angleL"] = 1;
-        if (keyboardState[SDL_SCANCODE_RIGHT]) cue.intentions["angleR"] = 1;
-        SDL_GetMouseState(&xMouse, &yMouse);
+//        auto keyboardState = SDL_GetKeyboardState(nullptr);
+//        if (keyboardState[SDL_SCANCODE_LEFT]) cue.intentions["angleL"] = 1;
+//        if (keyboardState[SDL_SCANCODE_RIGHT]) cue.intentions["angleR"] = 1;
+        SDL_GetMouseState(&mouseX, &mouseY);
         double dt_f = dt.count() / 1000.0;
 
         while (SDL_PollEvent(&event)) { // check if there are some events
@@ -104,15 +137,20 @@ int main(int, char **) {
             }
         }
 
-        if (isMouseDown)SDL_SetRenderDrawColor(renderer.get(), 255, 0, 255, 255);
-        else SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
+//        if (isMouseDown)SDL_SetRenderDrawColor(renderer.get(), 255, 0, 255, 255);
+//        else SDL_SetRenderDrawColor(renderer.get(), 255, 255, 255, 255);
 
-        cue.update_position(xMouse, yMouse);
-        cue.update_tracker(table.balls[0].position[0], table.balls[0].position[1], renderer, table.balls[0].radius);
+        cue.update_position(isMouseDown, dt_f);
+
         table.balls[0].update_cue_collision(cue);
         table.updateBallCollisions(dt_f);
-        cue.render(renderer);
+        table.updatePocketCollisions();
         table.render(renderer);
+//        cue.update_tracker(table.balls[0].position[0], table.balls[0].position[1], renderer, table.balls[0].radius);
+        cue.update_tracker(table.balls[0].position[0], table.balls[0].position[1], mouseX, mouseY,
+                           table.balls[0].radius, renderer);
+        cue.render(renderer);
+
         SDL_RenderPresent(renderer.get()); // draw frame to screen
         this_thread::sleep_until(current_time = current_time + dt);
     }
