@@ -15,8 +15,12 @@ public:
     std::vector<Ball> balls;
     std::vector<Pocket> pockets;
     std::array<int, 2> points{};
+    bool isTeamOneTurn = false;
+    int teamOneBalls = 2;
     const double collision_ratio = 0.8;
-
+    std::array<int, 2> pointsPrev{};
+    bool isNewTurnCalculated = true;
+    int isPutWhite = 2;
 
     Table(int width, int height, int margin) {
         this->margin = margin;
@@ -102,29 +106,11 @@ public:
         pockets.emplace_back(Pocket((x0 + x1) / 2, y1, scale));
     }
 
-    void renderTable(const std::shared_ptr<SDL_Renderer> &renderer) const {
-        SDL_SetRenderDrawColor(renderer.get(), 255, 255, 0, 255);
-        SDL_RenderDrawLine(renderer.get(), x0, y0, x1, y0);
-        SDL_RenderDrawLine(renderer.get(), x0, y0, x0, y1);
-        SDL_RenderDrawLine(renderer.get(), x0, y1, x1, y1);
-        SDL_RenderDrawLine(renderer.get(), x1, y0, x1, y1);
-
-        SDL_SetRenderDrawColor(renderer.get(), 44, 130, 87, 255);
-        for (int i = x0 + 1; i < x1; i++)
-            SDL_RenderDrawLine(renderer.get(), i, y0 + 1, i, y1);
-    }
-
-    void renderBalls(const std::shared_ptr<SDL_Renderer> &renderer) {
-        for (auto &ball : balls) ball.render(renderer);
-    }
-
-    void renderPockets(const std::shared_ptr<SDL_Renderer> &renderer) {
-        for (auto &pocket : pockets) pocket.render(renderer);
-    }
 
     void updateBallCollisions(double dt_f) {
         using namespace tp::operators;
         for (auto &ball : balls) ball.collided = false;
+
 
         for (auto &ball : balls) {
             ball.update_collisions(x0, y0, x1, y1);
@@ -153,33 +139,137 @@ public:
     }
 
     void updatePocketCollisions() {
+        std::vector<unsigned int> ballsToRemove{};
         for (auto &pocket : pockets) {
-            for (unsigned int i = 0; i <= balls.size(); i++) {
+            for (unsigned int i = 0; i < balls.size(); i++) {
                 auto &ball = balls[i];
                 const double distance = sqrt(
                         pow(ball.position[0] - pocket.position[0], 2) + pow(ball.position[1] - pocket.position[1], 2));
                 if (distance < pocket.radius + ballRadius / 2) {
-                    if (ball.team != 3)
-                        balls.erase(balls.begin() + i);
-                    if (ball.team == 0) points[0] += 1;
-                    else if (ball.team == 1) points[1] += 1;
-//                  else if(ball.team == 2)  if black then oppsite player wins
-//                  else place white ball where player wants to
-                    printf("%d - %d\n", points[0], points[1]);
+                    printf("ballid to remove:  %d  ballTeam: %d   isTeamOneTurn: %d \n", i, ball.team, isTeamOneTurn);
+                    if (ball.team != 3)ballsToRemove.push_back(i);
+                    ifFirstShotAssignBalls(ball.team);
+                    calculatePoints(ball.team);
                 }
             }
         }
+
+        removeBallsToRemove(ballsToRemove);
+    }
+
+    void removeBallsToRemove(const std::vector<unsigned int> &ballsToRemove) {
+        if (ballsToRemove.empty()) return;
+        printf("ballsToRemove.size():  %zu   balls.size(): %zu   \n", ballsToRemove.size(), balls.size());
+        for (auto &ballToRemove : ballsToRemove) balls.erase(balls.begin() + ballToRemove);
+
+    }
+
+    void ifFirstShotAssignBalls(int ballTeam) {
+        if (teamOneBalls != 2) return;
+
+        if (ballTeam == 0 && isTeamOneTurn) teamOneBalls = 0;
+        else if (ballTeam == 1 && isTeamOneTurn) teamOneBalls = 1;
+        else if (ballTeam == 0 && !isTeamOneTurn) teamOneBalls = 1;
+        else if (ballTeam == 1 && !isTeamOneTurn) teamOneBalls = 0;
+    }
+
+    void calculatePoints(int ballTeam) {
+        if (ballTeam == 0) {
+            if (teamOneBalls == 0) pointsPrev[0] += 1;
+            else pointsPrev[1] += 1;
+        } else if (ballTeam == 1) {
+            if (teamOneBalls == 1) pointsPrev[0] += 1;
+            else pointsPrev[1] += 1;
+        } else if (ballTeam == 2) {
+            if (isTeamOneTurn) {
+                int ballCount = countBalls()[teamOneBalls];
+                if (ballCount > 1)  printf("Player One lost by shooting black :(");
+                else pointsPrev[0] += 100;
+            } else {
+                int teamTwoBalls = teamOneBalls == 0 ? 1 : 0;
+                int ballCount = countBalls()[teamTwoBalls];
+                if (ballCount > 1) printf("Player Two lost by shooting black :(");
+                else pointsPrev[0] += 100;
+            }
+        } else if (ballTeam == 3) {
+            if (isTeamOneTurn) isPutWhite = 0;
+            else isPutWhite = 1;
+        }
+
+    }
+
+    std::array<int, 2> countBalls() {
+        std::array<int, 2> result = {0, 0};
+        for (auto &ball : balls) {
+            if (ball.team == 0) result[0] += 1;
+            else if (ball.team == 1) result[1] += 1;
+        }
+        return result;
+    }
+
+    bool isAnyBallMoving() {
+        for (auto &ball : balls) if (ball.speed() > 0) return true;
+        return false;
+    }
+
+    void updateNextTurn() {
+//        printf("isAnyBallMoving: %s   isNewTurnCalculated: %s\n", isAnyBallMoving() ? "true" : "false", isNewTurnCalculated ? "true" : "false");
+        if (isAnyBallMoving() || isNewTurnCalculated) return;
+
+        if (isTeamOneTurn && pointsPrev[1] > 0) isTeamOneTurn = false;
+        else if (!isTeamOneTurn && pointsPrev[0] > 0) isTeamOneTurn = true;
+        else if (isTeamOneTurn && pointsPrev[0] > 0) isTeamOneTurn = true;
+        else if (!isTeamOneTurn && pointsPrev[1] > 0) isTeamOneTurn = false;
+        else isTeamOneTurn = !isTeamOneTurn;
+
+        addPoints();
+        isNewTurnCalculated = true;
+    }
+
+    void addPoints() {
+        points[0] += pointsPrev[0];
+        points[1] += pointsPrev[1];
+        pointsPrev = {0, 0};
+        printf("Points: %d - %d\n", points[0], points[1]);
+//        printf("POINTS: %d - %d\n", points[0], points[1]);
+    }
+
+    void renderTable(const std::shared_ptr<SDL_Renderer> &renderer) const {
+        SDL_SetRenderDrawColor(renderer.get(), 255, 255, 0, 255);
+        SDL_RenderDrawLine(renderer.get(), x0, y0, x1, y0);
+        SDL_RenderDrawLine(renderer.get(), x0, y0, x0, y1);
+        SDL_RenderDrawLine(renderer.get(), x0, y1, x1, y1);
+        SDL_RenderDrawLine(renderer.get(), x1, y0, x1, y1);
+
+        SDL_SetRenderDrawColor(renderer.get(), 44, 130, 87, 255);
+        for (int i = x0 + 1; i < x1; i++)
+            SDL_RenderDrawLine(renderer.get(), i, y0 + 1, i, y1);
+    }
+
+    void renderBalls(std::shared_ptr<SDL_Renderer> &renderer) {
+        for (auto &ball : balls) ball.render(renderer);
+    }
+
+    void renderPockets(const std::shared_ptr<SDL_Renderer> &renderer) {
+        for (auto &pocket : pockets) pocket.render(renderer);
     }
 
 
-    void render(const std::shared_ptr<SDL_Renderer> &renderer) {
+    void render(std::shared_ptr<SDL_Renderer> &renderer) {
         renderTable(renderer);
         renderPockets(renderer);
         renderBalls(renderer);
-
     }
 
 
+    void putWhite(double mouseX, double mouseY, bool &isMouseDown) {
+        balls[0].position = {mouseX, mouseY};
+        if (isMouseDown) {
+            balls[0].velocity = {0, 0};
+            isPutWhite = 2;
+            isMouseDown = false;
+        }
+    }
 };
 
 #endif

@@ -1,17 +1,20 @@
 #ifndef ___BALL_JK___
 #define ___BALL_JK___
 
+#include "Cue.hpp"
+
 class Ball {
 public:
-    double radius = 2.85;
-    int stopSpeed = 30;
+    double radius;
+    int stopSpeed = 1;
     bool collided = false;
-    double friction = 0.002;
+    double friction = 0.003;
     std::array<double, 2> position{};
     std::array<double, 2> velocity{};
     std::array<double, 2> acceleration{};
     std::array<int, 3> color{};
-    int team;
+    int team{};
+    bool isHit = false;
 
     Ball() = default;
 
@@ -31,14 +34,18 @@ public:
         auto new_position = position + new_velocity * dt_f + new_acceleration * dt_f * dt_f * 0.5;
 
         if (length(new_velocity) < stopSpeed) new_velocity = {0, 0};
+//        acceleration = new_acceleration;
         velocity = new_velocity;
         position = new_position;
     }
 
-    void update_cue_collision(const Cue &cue) {
+    void update_cue_collision(Cue &cue, bool &tableIsNewTurnCalculated) {
         if (cue.distanceToWhite <= 0 and speed() == 0) {
-            acceleration = std::array<double, 2>{cos(cue.angle) * cue.power, sin(cue.angle) * cue.power};
-        } else acceleration = std::array<double, 2>{0, 0};
+            tableIsNewTurnCalculated = false;
+            isHit = true;
+            velocity = {cos(cue.angle) * cue.power, sin(cue.angle) * cue.power};
+        }
+//        } else acceleration = {0, 0};
     }
 
     void update_collisions(int x0, int y0, int x1, int y1) {
@@ -63,7 +70,7 @@ public:
         return length(velocity);
     };
 
-    void render(const std::shared_ptr<SDL_Renderer> &renderer) {
+    void render(std::shared_ptr<SDL_Renderer> &renderer) {
         SDL_SetRenderDrawColor(renderer.get(), color[0], color[1], color[2], 255);
         for (int w = 0; w < radius * 2; w++) {
             for (int h = 0; h < radius * 2; h++) {
