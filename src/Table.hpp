@@ -15,7 +15,7 @@ public:
     std::vector<Ball> balls;
     std::vector<Pocket> pockets;
     std::array<int, 2> points{};
-    bool isTeamOneTurn = false;
+    bool isTeamOneTurn;
     int teamOneBalls = 2;
     const double collision_ratio = 0.8;
     std::array<int, 2> pointsPrev{};
@@ -32,10 +32,18 @@ public:
         x1 = tableHeight * 2 + margin / 2;
         y1 = tableHeight + margin / 2;
         ballRadius = 2.85 * scale;
+        isTeamOneTurn = randomBoolean();
 
         placeBalls();
         placePockets();
     }
+
+    static bool randomBoolean() {
+        srand(time(NULL));
+        auto randomBoolean = rand() % 2;
+        return randomBoolean;
+    }
+
 
     std::vector<std::array<int, 4>> generateBalls() {
         std::vector<std::array<int, 4>> ball_colors{
@@ -183,7 +191,7 @@ public:
         } else if (ballTeam == 2) {
             if (isTeamOneTurn) {
                 int ballCount = countBalls()[teamOneBalls];
-                if (ballCount > 1)  printf("Player One lost by shooting black :(");
+                if (ballCount > 1) printf("Player One lost by shooting black :(");
                 else pointsPrev[0] += 100;
             } else {
                 int teamTwoBalls = teamOneBalls == 0 ? 1 : 0;

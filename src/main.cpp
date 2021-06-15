@@ -144,8 +144,7 @@ int main(int, char **) {
 
 //        cue1.update_position(isMouseDown, dt_f);
         table.updateNextTurn();
-
-        for (int i = 0; i < 50; i++)table.updateBallCollisions(dt_f);
+        for (int i = 0; i < 50; i++)table.updateBallCollisions(dt_f); //Speed up movement of balls 50x. Prevents bypassing collisions.
         table.updatePocketCollisions();
         table.render(renderer);
         if (table.isPutWhite != 2) {
