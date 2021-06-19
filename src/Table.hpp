@@ -21,6 +21,7 @@ public:
     std::array<int, 2> pointsPrev{};
     bool isNewTurnCalculated = true;
     int isPutWhite = 2;
+    int winner = 2;
 
     Table(int width, int height, int margin) {
         this->margin = margin;
@@ -191,13 +192,13 @@ public:
         } else if (ballTeam == 2) {
             if (isTeamOneTurn) {
                 int ballCount = countBalls()[teamOneBalls];
-                if (ballCount > 1) printf("Player One lost by shooting black :(");
-                else pointsPrev[0] += 100;
+                if (ballCount > 1) points[0] = winner = 1;
+                else points[0] = winner = 0;
             } else {
                 int teamTwoBalls = teamOneBalls == 0 ? 1 : 0;
                 int ballCount = countBalls()[teamTwoBalls];
-                if (ballCount > 1) printf("Player Two lost by shooting black :(");
-                else pointsPrev[0] += 100;
+                if (ballCount > 1)winner = 0;
+                else points[1] = winner = 1;
             }
         } else if (ballTeam == 3) {
             if (isTeamOneTurn) isPutWhite = 0;

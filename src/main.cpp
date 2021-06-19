@@ -15,13 +15,16 @@
 #include <functional>
 #include "vectors.hpp"
 
-#include <SDL2/SDL_ttf.h>
+
 #include <stdlib.h>
 #include "Cue.hpp"
 #include "Ball.hpp"
 #include "Table.hpp"
+#include "Dashboard.hpp"
 //#include "Text.hpp"
 #include "Pocket.hpp"
+#include <SDL2/SDL_ttf.h>
+//#include "SDL_ttf.h"
 
 #define errcheck(e)                   \
   {                                   \
@@ -50,35 +53,6 @@
 //    *position = newPosition;
 //}
 
-//#include <unistd.h>
-//std::string getcwd_string(  ) {
-//    char buff[128];
-//    getcwd( buff, 128 );
-//    std::string cwd( buff );
-//    return cwd;
-//}
-
-//void draw(const char* msg, int x, int y, int r, int g, int b, int size, const std::shared_ptr<SDL_Renderer> &ren) {
-//
-//    SDL_Surface* surf;
-//    SDL_Texture* tex;
-//    SDL_Color color;
-//    color.r=r;
-//    color.g=g;
-//    color.b=b;
-//    color.a=255;
-//    SDL_Rect rect;
-//    TTF_Font *font = TTF_OpenFont("data/font.ttf", size);
-//    surf = TTF_RenderText_Solid(font, msg, color);
-//    tex = SDL_CreateTextureFromSurface(ren.get(), surf);
-//    rect.x=x;
-//    rect.y=y;
-//    rect.w=surf->w;
-//    rect.h=surf->h;
-//    SDL_FreeSurface(surf);
-//    SDL_RenderCopy(ren.get(), tex, nullptr, &rect);
-//    SDL_DestroyTexture(tex);
-//}
 
 
 int main(int, char **) {
@@ -111,11 +85,20 @@ int main(int, char **) {
                                       [=](auto r) { SDL_DestroyRenderer(r); });
     errcheck(renderer == nullptr);
 
+    Dashboard dashboard(renderer);
+
+
+//    SDL_RenderPresent(renderer.get());
+//    SDL_DestroyTexture(texture);
+//    SDL_FreeSurface(image);
+//    SDL_DestroyRenderer(renderer.get());
+//    SDL_DestroyWindow(window.get());
 
     for (bool game_active = true; game_active;) {
         SDL_Event event;
         SDL_SetRenderDrawColor(renderer.get(), 0, 40, 73, 255);
         SDL_RenderClear(renderer.get());
+
 //        auto keyboardState = SDL_GetKeyboardState(nullptr);
 //        if (keyboardState[SDL_SCANCODE_LEFT]) cue1.intentions["angleL"] = 1;
 //        if (keyboardState[SDL_SCANCODE_RIGHT]) cue1.intentions["angleR"] = 1;
@@ -166,9 +149,12 @@ int main(int, char **) {
                 cue2.render(renderer);
             }
         }
-
+        dashboard.render(table.points, table.isTeamOneTurn,table.winner,renderer);
         SDL_RenderPresent(renderer.get()); // draw frame to screen
+
         this_thread::sleep_until(current_time = current_time + dt);
+
+
     }
 
     SDL_Quit();
